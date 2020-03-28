@@ -21,7 +21,7 @@ import datasets
 
 # exclude extremly large displacements
 MAX_FLOW = 1000
-SUM_FREQ = 1000
+SUM_FREQ = 100
 VAL_FREQ = 5000
 
 
@@ -86,7 +86,7 @@ def fetch_optimizer(args, model):
     optimizer = optim.AdamW(model.parameters(), lr=args.lr, weight_decay=args.wdecay, eps=args.epsilon)
 
     scheduler = optim.lr_scheduler.OneCycleLR(optimizer, args.lr, args.num_steps,
-        pct_start=0.2, cycle_momentum=False, anneal_strategy='linear', final_div_factor=0.05)
+        pct_start=0.2, cycle_momentum=False, anneal_strategy='linear', final_div_factor=1.0)
 
     return optimizer, scheduler
     
