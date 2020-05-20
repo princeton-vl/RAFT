@@ -221,7 +221,7 @@ class KITTI(FlowDataset):
         self.do_pad = do_pad
 
         if self.do_augument:
-            self.augumentor = FlowAugumentorKITTI(self.image_size, args.eraser_aug, min_scale=-0.2, max_scale=0.5)
+            self.augumentor = FlowAugmentorKITTI(self.image_size, min_scale=-0.2, max_scale=0.5)
 
         if self.is_test:
             images1 = sorted(glob(os.path.join(root, 'testing', 'image_2/*_10.png')))
