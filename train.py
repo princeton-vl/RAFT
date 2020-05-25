@@ -21,7 +21,7 @@ import datasets
 
 # exclude extremly large displacements
 MAX_FLOW = 1000
-SUM_FREQ = 100
+SUM_FREQ = 200
 VAL_FREQ = 5000
 
 
@@ -56,7 +56,7 @@ def sequence_loss(flow_preds, flow_gt, valid):
 
 
 def fetch_dataloader(args):
-    """ Create the data loader for the corresponding trainign set """
+    """ Create the data loader for the corresponding training set """
 
     if args.dataset == 'chairs':
         train_dataset = datasets.FlyingChairs(args, image_size=args.image_size)
@@ -86,7 +86,7 @@ def fetch_optimizer(args, model):
     optimizer = optim.AdamW(model.parameters(), lr=args.lr, weight_decay=args.wdecay, eps=args.epsilon)
 
     scheduler = optim.lr_scheduler.OneCycleLR(optimizer, args.lr, args.num_steps,
-        pct_start=0.2, cycle_momentum=False, anneal_strategy='linear', final_div_factor=1.0)
+        pct_start=0.2, cycle_momentum=False, anneal_strategy='linear')
 
     return optimizer, scheduler
     

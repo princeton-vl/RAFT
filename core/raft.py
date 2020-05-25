@@ -26,7 +26,7 @@ class RAFT(nn.Module):
             args.corr_levels = 4
             args.corr_radius = 4
 
-        if 'dropout' not in args._get_kwargs():
+        if not hasattr(args, 'dropout'):
             args.dropout = 0
 
         # feature network, context network, and update block
