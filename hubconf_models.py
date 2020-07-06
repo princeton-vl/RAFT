@@ -2,15 +2,16 @@ import argparse
 from core.raft import RAFT as RAFT_module
 import io
 import os
-import requests
 import torch
 from torch.nn import functional as F
+import urllib.request
 import zipfile
+
+models_url = 'https://www.dropbox.com/s/a2acvmczgzm6f9n/models.zip?dl=1'  # dl=1 is important
+
 
 __all__ = ["RAFT"]
 
-
-models_url = "https://www.dropbox.com/s/a2acvmczgzm6f9n/models.zip"
 
 ENV_TORCH_HOME = "TORCH_HOME"
 ENV_XDG_CACHE_HOME = "XDG_CACHE_HOME"
@@ -54,8 +55,8 @@ def RAFT(pretrained=False, model_name='chairs+things', small=False, **kwargs):
         torch_home = _get_torch_home()
         model_dir = os.path.join(torch_home, "checkpoints")
         os.makedirs(model_dir, exist_ok=True)
-        r = requests.get(models_url)
-        z = zipfile.ZipFile(io.BytesIO(r.content))
+        response = urllib.request.urlopen(models_url, timeout = 10)
+        z = zipfile.ZipFile(io.BytesIO(response.read()))
         z.extractall(model_dir)
         model_path = os.path.join(model_dir, 'models', model_name + '.pth')
         model.load_state_dict(torch.load(model_path))
