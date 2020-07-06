@@ -1,4 +1,5 @@
 import argparse
+from core.raft import RAFT as RAFT_module
 import os
 import torch
 from torch.nn import functional as F
@@ -44,7 +45,7 @@ def RAFT(pretrained=False, model_name='chairs+things', small=False, **kwargs):
     model_args = argparse.ArgumentParser()
     model_args.small = small
 
-    model = RAFT(model_args)
+    model = RAFT_module(model_args)
     device = torch.cuda.current_device()
     model = torch.nn.DataParallel(model, device_ids=[device])
 
