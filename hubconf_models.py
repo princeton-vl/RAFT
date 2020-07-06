@@ -36,12 +36,13 @@ def _pad8(img):
     return img
 
 
-def RAFT(pretrained=False, model_name='chairs+things', **kwargs):
+def RAFT(pretrained=False, model_name='chairs+things', small=False, **kwargs):
     """
     RAFT model (https://arxiv.org/abs/2003.12039)
     """
 
-    model_args = argparse.Namespace(**kwargs)
+    model_args = argparse.ArgumentParser(**kwargs)
+    model_args.small = small
 
     model = RAFT(model_args)
     device = torch.cuda.current_device()
