@@ -3,7 +3,7 @@ from core.raft import RAFT as RAFT_module
 import os
 import torch
 from torch.nn import functional as F
-import urllib
+import urllib.request
 import zipfile
 
 __all__ = ["RAFT"]
@@ -52,7 +52,7 @@ def RAFT(pretrained=False, model_name='chairs+things', small=False, **kwargs):
     if pretrained:
         torch_home = _get_torch_home()
         model_dir = os.path.join(torch_home, "checkpoints")
-        urllib.urlretrieve(models_url, os.path.join(model_dir, "models.zip"))
+        urllib.request.urlretrieve(models_url, os.path.join(model_dir, "models.zip"))
         with zipfile.ZipFile(os.path.join(model_dir, "models.zip") ,"r") as zip_file:
             zip_file.extractall(model_dir)
         model_path = os.path.join(model_dir, 'models', model_name + '.pth')
