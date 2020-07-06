@@ -3,10 +3,10 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-from modules.update import BasicUpdateBlock, SmallUpdateBlock
-from modules.extractor import BasicEncoder, SmallEncoder
-from modules.corr import CorrBlock
-from utils.utils import bilinear_sampler, coords_grid, upflow8
+from .modules.update import BasicUpdateBlock, SmallUpdateBlock
+from .modules.extractor import BasicEncoder, SmallEncoder
+from .modules.corr import CorrBlock
+from .utils.utils import bilinear_sampler, coords_grid, upflow8
 
 
 class RAFT(nn.Module):
@@ -19,7 +19,7 @@ class RAFT(nn.Module):
             self.context_dim = cdim = 64
             args.corr_levels = 4
             args.corr_radius = 3
-        
+
         else:
             self.hidden_dim = hdim = 128
             self.context_dim = cdim = 128
@@ -31,12 +31,12 @@ class RAFT(nn.Module):
 
         # feature network, context network, and update block
         if args.small:
-            self.fnet = SmallEncoder(output_dim=128, norm_fn='instance', dropout=args.dropout)        
+            self.fnet = SmallEncoder(output_dim=128, norm_fn='instance', dropout=args.dropout)
             self.cnet = SmallEncoder(output_dim=hdim+cdim, norm_fn='none', dropout=args.dropout)
             self.update_block = SmallUpdateBlock(self.args, hidden_dim=hdim)
 
         else:
-            self.fnet = BasicEncoder(output_dim=256, norm_fn='instance', dropout=args.dropout)        
+            self.fnet = BasicEncoder(output_dim=256, norm_fn='instance', dropout=args.dropout)
             self.cnet = BasicEncoder(output_dim=hdim+cdim, norm_fn='batch', dropout=args.dropout)
             self.update_block = BasicUpdateBlock(self.args, hidden_dim=hdim)
 
@@ -86,14 +86,12 @@ class RAFT(nn.Module):
 
             # F(t+1) = F(t) + \Delta(t)
             coords1 = coords1 + delta_flow
-            
+
             if upsample:
                 flow_up = upflow8(coords1 - coords0)
                 flow_predictions.append(flow_up)
-            
+
             else:
                 flow_predictions.append(coords1 - coords0)
 
         return flow_predictions
-
-
