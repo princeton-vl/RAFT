@@ -1,14 +1,15 @@
 import argparse
-from core.raft import RAFT as RAFT_module
 import io
 import os
 import time
-import torch
-from torch.nn import functional as F
 import urllib.request
 import zipfile
+import torch
+from torch.nn import functional as F
 
-models_url = 'https://www.dropbox.com/s/a2acvmczgzm6f9n/models.zip?dl=1'  # dl=1 is important
+from core.raft import RAFT as RAFT_module
+
+models_url = "https://www.dropbox.com/s/a2acvmczgzm6f9n/models.zip?dl=1"  # dl=1 is important
 
 
 __all__ = ["RAFT"]
@@ -40,38 +41,40 @@ def _pad8(img):
     return img
 
 
-def RAFT(pretrained=False, model_name='chairs+things', **kwargs):
+def RAFT(pretrained=False, model_name="chairs+things", **kwargs):
     """
     RAFT model (https://arxiv.org/abs/2003.12039)
     model_name (str): One of 'chairs+things', 'sintel', 'kitti' and 'small'
                       note that for 'small', the architecture is smaller
     """
 
-    model_list = ['chairs+things', 'sintel', 'kitti', 'small']
+    model_list = ["chairs+things", "sintel", "kitti", "small"]
     if model_name not in model_list:
         raise ValueError("Model should be one of " + str(model_list))
 
     model_args = argparse.Namespace(**kwargs)
-    model_args.small = 'small' in model_name
+    model_args.small = "small" in model_name
 
     model = RAFT_module(model_args)
-    device = torch.cuda.current_device()
+    device = torch.cuda.current_device() if torch.cuda.is_available() else "cpu"
     model = torch.nn.DataParallel(model, device_ids=[device])
 
     if pretrained:
         torch_home = _get_torch_home()
         model_dir = os.path.join(torch_home, "checkpoints")
-        model_path = os.path.join(model_dir, 'models', model_name + '.pth')
+        model_path = os.path.join(model_dir, "models", model_name + ".pth")
         cache_file_path = os.path.join(model_dir, "cache_RAFT")
         if not os.path.exists(cache_file_path):
             os.makedirs(model_dir, exist_ok=True)
-            open(cache_file_path, 'a').close()
+            open(cache_file_path, "a").close()
             response = urllib.request.urlopen(models_url, timeout=10)
             z = zipfile.ZipFile(io.BytesIO(response.read()))
             z.extractall(model_dir)
         else:
-            time.sleep(10)
-        model.load_state_dict(torch.load(model_path))
+            time.sleep(10)  # Give the time for the models to be downloaded and unzipped
+
+        map_location = None if torch.cuda.is_available() else torch.device('cpu')
+        model.load_state_dict(torch.load(model_path, map_location=map_location))
 
     model.to(device)
     model.eval()
@@ -91,9 +94,4 @@ def apply_model(model, images_from, images_to, iters=12, upsample=True):
     """
     images_from, images_to = _pad8(images_from), _pad8(images_to)
     with torch.no_grad():
-        return model(
-            image1=images_from,
-            image2=images_to,
-            iters=iters,
-            upsample=upsample,
-        )
+        return model(image1=images_from, image2=images_to, iters=iters, upsample=upsample)
