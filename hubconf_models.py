@@ -61,12 +61,10 @@ def RAFT(pretrained=False, model_name="chairs+things", **kwargs):
 
     if pretrained:
         torch_home = _get_torch_home()
-        model_dir = os.path.join(torch_home, "checkpoints")
+        model_dir = os.path.join(torch_home, "checkpoints", "models_RAFT")
         model_path = os.path.join(model_dir, "models", model_name + ".pth")
-        cache_file_path = os.path.join(model_dir, "cache_RAFT")
-        if not os.path.exists(cache_file_path):
+        if not os.path.exists(model_dir):
             os.makedirs(model_dir, exist_ok=True)
-            open(cache_file_path, "a").close()
             response = urllib.request.urlopen(models_url, timeout=10)
             z = zipfile.ZipFile(io.BytesIO(response.read()))
             z.extractall(model_dir)
