@@ -2,6 +2,7 @@ import argparse
 from core.raft import RAFT as RAFT_module
 import io
 import os
+import time
 import torch
 from torch.nn import functional as F
 import urllib.request
@@ -61,13 +62,15 @@ def RAFT(pretrained=False, model_name='chairs+things', **kwargs):
         torch_home = _get_torch_home()
         model_dir = os.path.join(torch_home, "checkpoints")
         model_path = os.path.join(model_dir, 'models', model_name + '.pth')
-        cache_file_path = os.path.join(model_dir, "cache")
+        cache_file_path = os.path.join(model_dir, "cache_RAFT")
         if not os.path.exists(cache_file_path):
             os.makedirs(model_dir, exist_ok=True)
             open(cache_file_path, 'a').close()
             response = urllib.request.urlopen(models_url, timeout=10)
             z = zipfile.ZipFile(io.BytesIO(response.read()))
             z.extractall(model_dir)
+        else:
+            time.sleep(10)
         model.load_state_dict(torch.load(model_path))
 
     model.to(device)
