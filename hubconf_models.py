@@ -46,6 +46,10 @@ def RAFT(pretrained=False, model_name='chairs+things', **kwargs):
                       note that for 'small', the architecture is smaller
     """
 
+    model_list = ['chairs+things', 'sintel', 'kitti', 'small']
+    if model_name not in model_list:
+        raise ValueError("Model should be one of " + str(model_list))
+
     model_args = argparse.Namespace(**kwargs)
     model_args.small = 'small' in model_name
 
@@ -56,11 +60,12 @@ def RAFT(pretrained=False, model_name='chairs+things', **kwargs):
     if pretrained:
         torch_home = _get_torch_home()
         model_dir = os.path.join(torch_home, "checkpoints")
-        os.makedirs(model_dir, exist_ok=True)
-        response = urllib.request.urlopen(models_url, timeout = 10)
-        z = zipfile.ZipFile(io.BytesIO(response.read()))
-        z.extractall(model_dir)
         model_path = os.path.join(model_dir, 'models', model_name + '.pth')
+        os.makedirs(model_dir, exist_ok=True)
+        response = urllib.request.urlopen(models_url, timeout=10)
+        if not os.path.exists(model_path):
+            z = zipfile.ZipFile(io.BytesIO(response.read()))
+            z.extractall(model_dir)
         model.load_state_dict(torch.load(model_path))
 
     model.to(device)
