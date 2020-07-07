@@ -39,13 +39,15 @@ def _pad8(img):
     return img
 
 
-def RAFT(pretrained=False, model_name='chairs+things', small=False, **kwargs):
+def RAFT(pretrained=False, model_name='chairs+things', **kwargs):
     """
     RAFT model (https://arxiv.org/abs/2003.12039)
+    model_name (str): One of 'chairs+things', 'sintel', 'kitti' and 'small'
+                      note that for 'small', the architecture is smaller
     """
 
     model_args = argparse.Namespace(**kwargs)
-    model_args.small = small
+    model_args.small = 'small' in model_name
 
     model = RAFT_module(model_args)
     device = torch.cuda.current_device()
