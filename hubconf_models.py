@@ -7,7 +7,7 @@ import zipfile
 import torch
 from torch.nn import functional as F
 
-from .core.raft import RAFT as RAFT_module
+from core.raft import RAFT as RAFT_module
 
 models_url = "https://www.dropbox.com/s/a2acvmczgzm6f9n/models.zip?dl=1"  # dl=1 is important
 
