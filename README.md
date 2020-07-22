@@ -1,7 +1,11 @@
 # RAFT
+
+**7/22/2020: We have updated our method to predict flow at full resolution leading to improved results on public benchmarks. This repository will be updated to reflect these changes within the next few days.**
+
 This repository contains the source code for our paper:
 
 [RAFT: Recurrent All Pairs Field Transforms for Optical Flow](https://arxiv.org/pdf/2003.12039.pdf)<br/>
+ECCV 2020 <br/>
 Zachary Teed and Jia Deng<br/>
 
 <img src="RAFT.png">
