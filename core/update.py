@@ -2,34 +2,6 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-# VariationalHidDropout from https://github.com/locuslab/trellisnet/tree/master/TrellisNet
-class VariationalHidDropout(nn.Module):
-    def __init__(self, dropout=0.0):
-        """
-        Hidden-to-hidden (VD-based) dropout that applies the same mask at every time step and every layer of TrellisNet
-        :param dropout: The dropout rate (0 means no dropout is applied)
-        """
-        super(VariationalHidDropout, self).__init__()
-        self.dropout = dropout
-        self.mask = None
-
-    def reset_mask(self, x):
-        dropout = self.dropout
-
-        # Dimension (N, C, L)
-        n, c, h, w = x.shape
-        m = x.data.new(n, c, 1, 1).bernoulli_(1 - dropout)
-        with torch.no_grad():
-            mask = m / (1 - dropout)
-            self.mask = mask
-        return mask
-
-    def forward(self, x):
-        if not self.training or self.dropout == 0:
-            return x
-        assert self.mask is not None, "You need to reset mask before using VariationalHidDropout"
-        return self.mask * x
-
 
 class FlowHead(nn.Module):
     def __init__(self, input_dim=128, hidden_dim=256):
@@ -40,7 +12,6 @@ class FlowHead(nn.Module):
 
     def forward(self, x):
         return self.conv2(self.relu(self.conv1(x)))
-
 
 class ConvGRU(nn.Module):
     def __init__(self, hidden_dim=128, input_dim=192+128):
@@ -58,7 +29,6 @@ class ConvGRU(nn.Module):
 
         h = (1-z) * h + z * q
         return h
-
 
 class SepConvGRU(nn.Module):
     def __init__(self, hidden_dim=128, input_dim=192+128):
@@ -133,49 +103,37 @@ class SmallUpdateBlock(nn.Module):
         self.gru = ConvGRU(hidden_dim=hidden_dim, input_dim=82+64)
         self.flow_head = FlowHead(hidden_dim, hidden_dim=128)
 
-        self.drop_inp = VariationalHidDropout(dropout=args.dropout)
-        self.drop_net = VariationalHidDropout(dropout=args.dropout)
-
-    def reset_mask(self, net, inp):
-        self.drop_inp.reset_mask(inp)
-        self.drop_net.reset_mask(net)
-
     def forward(self, net, inp, corr, flow):
         motion_features = self.encoder(flow, corr)
-
-        if self.training:
-            net = self.drop_net(net)
-            inp = self.drop_inp(inp)
-
         inp = torch.cat([inp, motion_features], dim=1)
         net = self.gru(net, inp)
         delta_flow = self.flow_head(net)
 
-        return net, delta_flow
+        return net, None, delta_flow
 
 class BasicUpdateBlock(nn.Module):
     def __init__(self, args, hidden_dim=128, input_dim=128):
         super(BasicUpdateBlock, self).__init__()
+        self.args = args
         self.encoder = BasicMotionEncoder(args)
         self.gru = SepConvGRU(hidden_dim=hidden_dim, input_dim=128+hidden_dim)
         self.flow_head = FlowHead(hidden_dim, hidden_dim=256)
 
-        self.drop_inp = VariationalHidDropout(dropout=args.dropout)
-        self.drop_net = VariationalHidDropout(dropout=args.dropout)
+        self.mask = nn.Sequential(
+            nn.Conv2d(128, 256, 3, padding=1),
+            nn.ReLU(inplace=True),
+            nn.Conv2d(256, 64*9, 1, padding=0))
 
-    def reset_mask(self, net, inp):
-        self.drop_inp.reset_mask(inp)
-        self.drop_net.reset_mask(net)
-
-    def forward(self, net, inp, corr, flow):
+    def forward(self, net, inp, corr, flow, upsample=True):
         motion_features = self.encoder(flow, corr)
-
-        if self.training:
-            net = self.drop_net(net)
-            inp = self.drop_inp(inp)
-        
         inp = torch.cat([inp, motion_features], dim=1)
+
         net = self.gru(net, inp)
         delta_flow = self.flow_head(net)
 
-        return net, delta_flow
+        # scale mask to balence gradients
+        mask = .25 * self.mask(net)
+        return net, mask, delta_flow
+
+
+

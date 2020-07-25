@@ -16,26 +16,43 @@ import torch.nn.functional as F
 
 from torch.utils.data import DataLoader
 from raft import RAFT
-from evaluate import validate_sintel, validate_kitti
+import evaluate
 import datasets
 
+from torch.utils.tensorboard import SummaryWriter
+
+try:
+    from torch.cuda.amp import GradScaler
+except:
+    # dummy GradScaler for PyTorch < 1.6
+    class GradScaler:
+        def __init__(self):
+            pass
+        def scale(self, loss):
+            return loss
+        def unscale_(self, optimizer):
+            pass
+        def step(self, optimizer):
+            optimizer.step()
+        def update(self):
+            pass
+
+
 # exclude extremly large displacements
-MAX_FLOW = 1000
-SUM_FREQ = 200
+MAX_FLOW = 500
+SUM_FREQ = 100
 VAL_FREQ = 5000
 
 
-def count_parameters(model):
-    return sum(p.numel() for p in model.parameters() if p.requires_grad)
-
-def sequence_loss(flow_preds, flow_gt, valid):
+def sequence_loss(flow_preds, flow_gt, valid, max_flow=MAX_FLOW):
     """ Loss function defined over sequence of flow predictions """
 
     n_predictions = len(flow_preds)    
     flow_loss = 0.0
 
     # exlude invalid pixels and extremely large diplacements
-    valid = (valid >= 0.5) & (flow_gt.abs().sum(dim=1) < MAX_FLOW)
+    mag = torch.sum(flow_gt**2, dim=1).sqrt()
+    valid = (valid >= 0.5) & (mag < max_flow)
 
     for i in range(n_predictions):
         i_weight = 0.8**(n_predictions - i - 1)
@@ -54,39 +71,22 @@ def sequence_loss(flow_preds, flow_gt, valid):
 
     return flow_loss, metrics
 
+def show_image(img):
+    img = img.permute(1,2,0).cpu().numpy()
+    plt.imshow(img/255.0)
+    plt.show()
+    # cv2.imshow('image', img/255.0)
+    # cv2.waitKey()
 
-def fetch_dataloader(args):
-    """ Create the data loader for the corresponding training set """
-
-    if args.dataset == 'chairs':
-        train_dataset = datasets.FlyingChairs(args, image_size=args.image_size)
-    
-    elif args.dataset == 'things':
-        clean_dataset = datasets.SceneFlow(args, image_size=args.image_size, dstype='frames_cleanpass')
-        final_dataset = datasets.SceneFlow(args, image_size=args.image_size, dstype='frames_finalpass')
-        train_dataset = clean_dataset + final_dataset
-
-    elif args.dataset == 'sintel':
-        clean_dataset = datasets.MpiSintel(args, image_size=args.image_size, dstype='clean')
-        final_dataset = datasets.MpiSintel(args, image_size=args.image_size, dstype='final')
-        train_dataset = clean_dataset + final_dataset
-
-    elif args.dataset == 'kitti':
-        train_dataset = datasets.KITTI(args, image_size=args.image_size, is_val=False)
-
-    gpuargs = {'num_workers': 4, 'drop_last' : True}
-    train_loader = DataLoader(train_dataset, batch_size=args.batch_size, 
-        pin_memory=True, shuffle=True, **gpuargs)
-
-    print('Training with %d image pairs' % len(train_dataset))
-    return train_loader
+def count_parameters(model):
+    return sum(p.numel() for p in model.parameters() if p.requires_grad)
 
 def fetch_optimizer(args, model):
     """ Create the optimizer and learning rate scheduler """
     optimizer = optim.AdamW(model.parameters(), lr=args.lr, weight_decay=args.wdecay, eps=args.epsilon)
 
-    scheduler = optim.lr_scheduler.OneCycleLR(optimizer, args.lr, args.num_steps,
-        pct_start=0.2, cycle_momentum=False, anneal_strategy='linear')
+    scheduler = optim.lr_scheduler.OneCycleLR(optimizer, args.lr, args.num_steps+100,
+        pct_start=0.05, cycle_momentum=False, anneal_strategy='linear')
 
     return optimizer, scheduler
     
@@ -97,17 +97,22 @@ class Logger:
         self.scheduler = scheduler
         self.total_steps = 0
         self.running_loss = {}
+        self.writer = None
 
     def _print_training_status(self):
         metrics_data = [self.running_loss[k]/SUM_FREQ for k in sorted(self.running_loss.keys())]
-        training_str = "[{:6d}, {:10.7f}] ".format(self.total_steps+1, self.scheduler.get_lr()[0])
+        training_str = "[{:6d}, {:10.7f}] ".format(self.total_steps+1, self.scheduler.get_last_lr()[0])
         metrics_str = ("{:10.4f}, "*len(metrics_data)).format(*metrics_data)
         
         # print the training status
         print(training_str + metrics_str)
 
-        for key in self.running_loss:
-            self.running_loss[key] = 0.0
+        if self.writer is None:
+            self.writer = SummaryWriter()
+
+        for k in self.running_loss:
+            self.writer.add_scalar(k, self.running_loss[k]/SUM_FREQ, self.total_steps)
+            self.running_loss[k] = 0.0
 
     def push(self, metrics):
         self.total_steps += 1
@@ -122,56 +127,95 @@ class Logger:
             self._print_training_status()
             self.running_loss = {}
 
+    def write_dict(self, results):
+        if self.writer is None:
+            self.writer = SummaryWriter()
+
+        for key in results:
+            self.writer.add_scalar(key, results[key], self.total_steps)
+
+    def close(self):
+        self.writer.close()
+
 
 def train(args):
 
-    model = RAFT(args)
-    model = nn.DataParallel(model)
+    model = nn.DataParallel(RAFT(args), device_ids=args.gpus)
     print("Parameter Count: %d" % count_parameters(model))
 
     if args.restore_ckpt is not None:
-        model.load_state_dict(torch.load(args.restore_ckpt))
+        model.load_state_dict(torch.load(args.restore_ckpt), strict=False)
 
     model.cuda()
     model.train()
-    
-    if 'chairs' not in args.dataset:
+
+    if args.stage != 'chairs':
         model.module.freeze_bn()
 
-    train_loader = fetch_dataloader(args)
+    train_loader = datasets.fetch_dataloader(args)
     optimizer, scheduler = fetch_optimizer(args, model)
 
     total_steps = 0
+    scaler = GradScaler(enabled=args.mixed_precision)
     logger = Logger(model, scheduler)
+
+    VAL_FREQ = 5000
+    add_noise = True
 
     should_keep_training = True
     while should_keep_training:
 
         for i_batch, data_blob in enumerate(train_loader):
+            optimizer.zero_grad()
             image1, image2, flow, valid = [x.cuda() for x in data_blob]
 
-            optimizer.zero_grad()
-            flow_predictions = model(image1, image2, iters=args.iters)
-            
+            # show_image(image1[0])
+            # show_image(image2[0])
+
+            if args.add_noise:
+                stdv = np.random.uniform(0.0, 5.0)
+                image1 = (image1 + stdv * torch.randn(*image1.shape).cuda()).clamp(0.0, 255.0)
+                image2 = (image2 + stdv * torch.randn(*image2.shape).cuda()).clamp(0.0, 255.0)
+
+            flow_predictions = model(image1, image2, iters=args.iters)            
+
             loss, metrics = sequence_loss(flow_predictions, flow, valid)
-            loss.backward()
+            scaler.scale(loss).backward()
 
+            scaler.unscale_(optimizer)
             torch.nn.utils.clip_grad_norm_(model.parameters(), args.clip)
-            optimizer.step()
+            
+            scaler.step(optimizer)
             scheduler.step()
-            total_steps += 1
-
+            scaler.update()
             logger.push(metrics)
 
-            if total_steps % VAL_FREQ == VAL_FREQ-1:
+            if total_steps % VAL_FREQ == VAL_FREQ - 1:
                 PATH = 'checkpoints/%d_%s.pth' % (total_steps+1, args.name)
                 torch.save(model.state_dict(), PATH)
 
-            if total_steps == args.num_steps:
+                results = {}
+                for val_dataset in args.validation:
+                    if val_dataset == 'chairs':
+                        results.update(evaluate.validate_chairs(model.module))
+                    elif val_dataset == 'sintel':
+                        results.update(evaluate.validate_sintel(model.module))
+                    elif val_dataset == 'kitti':
+                        results.update(evaluate.validate_kitti(model.module))
+
+                logger.write_dict(results)
+                
+                model.train()
+                if args.stage != 'chairs':
+                    model.module.freeze_bn()
+            
+            total_steps += 1
+
+            if total_steps > args.num_steps:
                 should_keep_training = False
                 break
 
-
+    logger.close()
     PATH = 'checkpoints/%s.pth' % args.name
     torch.save(model.state_dict(), PATH)
 
@@ -180,21 +224,25 @@ def train(args):
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
-    parser.add_argument('--name', default='bla', help="name your experiment")
-    parser.add_argument('--dataset', help="which dataset to use for training") 
+    parser.add_argument('--name', default='raft', help="name your experiment")
+    parser.add_argument('--stage', help="determines which dataset to use for training") 
     parser.add_argument('--restore_ckpt', help="restore checkpoint")
     parser.add_argument('--small', action='store_true', help='use small model')
+    parser.add_argument('--validation', type=str, nargs='+')
 
     parser.add_argument('--lr', type=float, default=0.00002)
     parser.add_argument('--num_steps', type=int, default=100000)
     parser.add_argument('--batch_size', type=int, default=6)
     parser.add_argument('--image_size', type=int, nargs='+', default=[384, 512])
+    parser.add_argument('--gpus', type=int, nargs='+', default=[0,1])
+    parser.add_argument('--mixed_precision', action='store_true', help='use mixed precision')
 
     parser.add_argument('--iters', type=int, default=12)
     parser.add_argument('--wdecay', type=float, default=.00005)
     parser.add_argument('--epsilon', type=float, default=1e-8)
     parser.add_argument('--clip', type=float, default=1.0)
     parser.add_argument('--dropout', type=float, default=0.0)
+    parser.add_argument('--add_noise', action='store_true')
     args = parser.parse_args()
 
     torch.manual_seed(1234)
@@ -202,10 +250,5 @@ if __name__ == '__main__':
 
     if not os.path.isdir('checkpoints'):
         os.mkdir('checkpoints')
-
-    # scale learning rate and batch size by number of GPUs
-    num_gpus = torch.cuda.device_count()
-    args.batch_size = args.batch_size * num_gpus
-    args.lr = args.lr * num_gpus
 
     train(args)

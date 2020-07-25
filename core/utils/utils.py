@@ -4,21 +4,21 @@ import numpy as np
 from scipy import interpolate
 
 
-def bilinear_sampler(img, coords, mode='bilinear', mask=False):
-    """ Wrapper for grid_sample, uses pixel coordinates """
-    H, W = img.shape[-2:]
-    xgrid, ygrid = coords.split([1,1], dim=-1)
-    xgrid = 2*xgrid/(W-1) - 1
-    ygrid = 2*ygrid/(H-1) - 1
+class InputPadder:
+    """ Pads images such that dimensions are divisible by 8 """
+    def __init__(self, dims):
+        self.ht, self.wd = dims[-2:]
+        pad_ht = (((self.ht // 8) + 1) * 8 - self.ht) % 8
+        pad_wd = (((self.wd // 8) + 1) * 8 - self.wd) % 8
+        self._pad = [pad_wd//2, pad_wd - pad_wd//2, 0, pad_ht]
 
-    grid = torch.cat([xgrid, ygrid], dim=-1)
-    img = F.grid_sample(img, grid, align_corners=True)
+    def pad(self, *inputs):
+        return [F.pad(x, self._pad, mode='replicate') for x in inputs]
 
-    if mask:
-        mask = (xgrid > -1) & (ygrid > -1) & (xgrid < 1) & (ygrid < 1)
-        return img, mask.float()
-
-    return img
+    def unpad(self,x):
+        ht, wd = x.shape[-2:]
+        c = [self._pad[2], ht-self._pad[3], self._pad[0], wd-self._pad[1]]
+        return x[..., c[0]:c[1], c[2]:c[3]]
 
 def forward_interpolate(flow):
     flow = flow.detach().cpu().numpy()
@@ -42,13 +42,31 @@ def forward_interpolate(flow):
     dy = dy[valid]
 
     flow_x = interpolate.griddata(
-        (x1, y1), dx, (x0, y0), method='nearest')
+        (x1, y1), dx, (x0, y0), method='cubic', fill_value=0)
 
     flow_y = interpolate.griddata(
-        (x1, y1), dy, (x0, y0), method='nearest')
+        (x1, y1), dy, (x0, y0), method='cubic', fill_value=0)
 
     flow = np.stack([flow_x, flow_y], axis=0)
     return torch.from_numpy(flow).float()
+
+
+def bilinear_sampler(img, coords, mode='bilinear', mask=False):
+    """ Wrapper for grid_sample, uses pixel coordinates """
+    H, W = img.shape[-2:]
+    xgrid, ygrid = coords.split([1,1], dim=-1)
+    xgrid = 2*xgrid/(W-1) - 1
+    ygrid = 2*ygrid/(H-1) - 1
+
+    grid = torch.cat([xgrid, ygrid], dim=-1)
+    img = F.grid_sample(img, grid, align_corners=True)
+
+    if mask:
+        mask = (xgrid > -1) & (ygrid > -1) & (xgrid < 1) & (ygrid < 1)
+        return img, mask.float()
+
+    return img
+
 
 
 def coords_grid(batch, ht, wd):
