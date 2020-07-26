@@ -22,7 +22,7 @@ conda install opencv
 ## Demos
 Pretrained models can be downloaded by running
 ```Shell
-./scripts/download_models.sh
+./download_models.sh
 ```
 or downloaded from [google drive](https://drive.google.com/file/d/10-BYgHqRNPGvmNUWr8razjb1xHu55pyA/view?usp=sharing)
 
