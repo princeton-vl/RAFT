@@ -8,11 +8,11 @@ Zachary Teed and Jia Deng<br/>
 <img src="RAFT.png">
 
 ## Requirements
-The code has been tested with PyTorch 1.5.1 and PyTorch Nightly. If you want to train with mixed precision, you will have to install the nightly build.
+The code has been tested with PyTorch 1.6 and Cuda 10.1.
 ```Shell
 conda create --name raft
 conda activate raft
-conda install pytorch torchvision cudatoolkit=10.1 -c pytorch-nightly
+conda install pytorch=1.6.0 torchvision=0.7.0 cudatoolkit=10.1 -c pytorch
 conda install matplotlib
 conda install tensorboard
 conda install scipy
@@ -67,8 +67,7 @@ python evaluate.py --model=models/raft-things.pth --dataset=sintel
 ```
 
 ## Training
-Training code will be made available in the next few days
-<!-- We used the following training schedule in our paper (note: we use 2 GPUs for training). Training logs will be written to the `runs` which can be visualized using tensorboard
+We used the following training schedule in our paper (2 GPUs). Training logs will be written to the `runs` which can be visualized using tensorboard
 ```Shell
 ./train_standard.sh
 ```
@@ -76,4 +75,4 @@ Training code will be made available in the next few days
 If you have a RTX GPU, training can be accelerated using mixed precision. You can expect similiar results in this setting (1 GPU)
 ```Shell
 ./train_mixed.sh
-``` -->
+```
