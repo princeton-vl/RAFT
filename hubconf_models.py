@@ -41,7 +41,7 @@ def _pad8(img):
     return img
 
 
-def RAFT(pretrained=False, model_name="chairs+things", **kwargs):
+def RAFT(pretrained=False, model_name="chairs+things", device=None, **kwargs):
     """
     RAFT model (https://arxiv.org/abs/2003.12039)
     model_name (str): One of 'chairs+things', 'sintel', 'kitti' and 'small'
@@ -56,7 +56,8 @@ def RAFT(pretrained=False, model_name="chairs+things", **kwargs):
     model_args.small = "small" in model_name
 
     model = RAFT_module(model_args)
-    device = torch.cuda.current_device() if torch.cuda.is_available() else "cpu"
+    if device is None:
+        device = torch.cuda.current_device() if torch.cuda.is_available() else "cpu"
     model = torch.nn.DataParallel(model, device_ids=[device])
 
     if pretrained:
@@ -71,10 +72,9 @@ def RAFT(pretrained=False, model_name="chairs+things", **kwargs):
         else:
             time.sleep(10)  # Give the time for the models to be downloaded and unzipped
 
-        map_location = None if torch.cuda.is_available() else torch.device('cpu')
+        map_location = torch.device('cpu') if device == "cpu" else None
         model.load_state_dict(torch.load(model_path, map_location=map_location))
 
-    model.to(device)
     model.eval()
     return model
 
