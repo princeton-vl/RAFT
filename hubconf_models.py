@@ -75,6 +75,7 @@ def RAFT(pretrained=False, model_name="chairs+things", device=None, **kwargs):
         map_location = torch.device('cpu') if device == "cpu" else None
         model.load_state_dict(torch.load(model_path, map_location=map_location))
 
+    model = model.to(device)
     model.eval()
     return model
 
