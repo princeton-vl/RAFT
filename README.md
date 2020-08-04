@@ -63,7 +63,7 @@ By default `datasets.py` will search for the datasets in these locations. You ca
 ## Evaluation
 You can evaluate a trained model using `evaluate.py`
 ```Shell
-python evaluate.py --model=models/raft-things.pth --dataset=sintel
+python evaluate.py --model=models/raft-things.pth --dataset=sintel --mixed_precision
 ```
 
 ## Training
