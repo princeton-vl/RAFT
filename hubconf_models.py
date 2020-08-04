@@ -56,11 +56,13 @@ def RAFT(pretrained=False, model_name="chairs+things", device=None, **kwargs):
     model_args.small = "small" in model_name
 
     model = RAFT_module(model_args)
-    print("\n\n", device, "\n\n")
     if device is None:
         device = torch.cuda.current_device() if torch.cuda.is_available() else "cpu"
-    print("\n\n", device, "\n\n")
-    model = torch.nn.DataParallel(model, device_ids=[device])
+    if device != "cpu":
+        model = torch.nn.DataParallel(model, device_ids=[device])
+    else:
+        model = torch.nn.DataParallel(model)
+        model.device_ids, model.output_device = ["cpu"], "cpu"
 
     if pretrained:
         torch_home = _get_torch_home()
