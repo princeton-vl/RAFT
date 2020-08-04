@@ -62,7 +62,7 @@ def RAFT(pretrained=False, model_name="chairs+things", device=None, **kwargs):
         model = torch.nn.DataParallel(model, device_ids=[device])
     else:
         model = torch.nn.DataParallel(model)
-        model.device_ids, model.output_device = ["cpu"], "cpu"
+        model.device_ids = None
 
     if pretrained:
         torch_home = _get_torch_home()
