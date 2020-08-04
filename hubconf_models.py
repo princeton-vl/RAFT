@@ -44,6 +44,16 @@ def _pad8(img):
     return img
 
 
+class CPUDataParallel(torch.nn.Module):
+    # A fake DataParallel class to deal with the CPU case
+    def __init__(self, module):
+        super(CPUDataParallel, self).__init__()
+        self.module = module
+
+    def forward(self, *inputs, **kwargs):
+        return self.module(*inputs, **kwargs)
+
+
 def RAFT(pretrained=False, model_name="chairs+things", device=None, **kwargs):
     """
     RAFT model (https://arxiv.org/abs/2003.12039)
@@ -61,11 +71,10 @@ def RAFT(pretrained=False, model_name="chairs+things", device=None, **kwargs):
     model = RAFT_module(model_args)
     if device is None:
         device = torch.cuda.current_device() if torch.cuda.is_available() else "cpu"
-    if device != "cpu":
-        model = torch.nn.DataParallel(model, device_ids=[device])
+    if device == "cpu":
+        model = CPUDataParallel(model)
     else:
-        model = torch.nn.DataParallel(model)
-        model.device_ids = None
+        model = torch.nn.DataParallel(model, device_ids=[device])
 
     if pretrained:
         torch_home = _get_torch_home()
