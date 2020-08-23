@@ -31,6 +31,13 @@ You can demo a trained model on a sequence of frames
 python demo.py --model=models/raft-things.pth --path=demo-frames
 ```
 
+## (Optional) Efficent Implementation
+You can optionally use our alternate (efficent) implementation by compiling the provided cuda extension
+```Shell
+cd alt_cuda_corr && python setup.py install && cd ..
+```
+and running `demo.py` and `evaluate.py` with the `--alternate_corr` flag.Note, this implementation is somewhat slower than all-pairs, but uses significantly less GPU memory during the forward pass.
+
 
 ## Required Data
 To evaluate/train RAFT, you will need to download the required datasets. 

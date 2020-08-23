@@ -6,11 +6,14 @@ from scipy import interpolate
 
 class InputPadder:
     """ Pads images such that dimensions are divisible by 8 """
-    def __init__(self, dims):
+    def __init__(self, dims, mode='sintel'):
         self.ht, self.wd = dims[-2:]
         pad_ht = (((self.ht // 8) + 1) * 8 - self.ht) % 8
         pad_wd = (((self.wd // 8) + 1) * 8 - self.wd) % 8
-        self._pad = [pad_wd//2, pad_wd - pad_wd//2, 0, pad_ht]
+        if mode == 'sintel':
+            self._pad = [pad_wd//2, pad_wd - pad_wd//2, pad_ht//2, pad_ht - pad_ht//2]
+        else:
+            self._pad = [pad_wd//2, pad_wd - pad_wd//2, 0, pad_ht]
 
     def pad(self, *inputs):
         return [F.pad(x, self._pad, mode='replicate') for x in inputs]
@@ -42,10 +45,10 @@ def forward_interpolate(flow):
     dy = dy[valid]
 
     flow_x = interpolate.griddata(
-        (x1, y1), dx, (x0, y0), method='cubic', fill_value=0)
+        (x1, y1), dx, (x0, y0), method='nearest', fill_value=0)
 
     flow_y = interpolate.griddata(
-        (x1, y1), dy, (x0, y0), method='cubic', fill_value=0)
+        (x1, y1), dy, (x0, y0), method='nearest', fill_value=0)
 
     flow = np.stack([flow_x, flow_y], axis=0)
     return torch.from_numpy(flow).float()
@@ -66,7 +69,6 @@ def bilinear_sampler(img, coords, mode='bilinear', mask=False):
         return img, mask.float()
 
     return img
-
 
 
 def coords_grid(batch, ht, wd):
