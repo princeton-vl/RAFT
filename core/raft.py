@@ -83,7 +83,7 @@ class RAFT(nn.Module):
         return up_flow.reshape(N, 2, 8*H, 8*W)
 
 
-    def forward(self, image1, image2, iters=12, flow_init=None, upsample=True, test_mode=False):
+    def forward(self, image1, image2, iters=torch.tensor(12), flow_init=torch.tensor([]), upsample=torch.tensor(True), test_mode=torch.tensor(False)):
         """ Estimate optical flow between pair of frames """
 
         image1 = 2 * (image1 / 255.0) - 1.0
@@ -115,7 +115,7 @@ class RAFT(nn.Module):
 
         coords0, coords1 = self.initialize_flow(image1)
 
-        if flow_init is not None:
+        if flow_init is not None and flow_init.numel()>0:
             coords1 = coords1 + flow_init
 
         flow_predictions = []
