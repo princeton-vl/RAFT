@@ -24,13 +24,13 @@ def create_sintel_submission(model, iters=32, warm_start=False, output_path='sin
     model.eval()
     for dstype in ['clean', 'final']:
         test_dataset = datasets.MpiSintel(split='test', aug_params=None, dstype=dstype)
-        
+
         flow_prev, sequence_prev = None, None
         for test_id in range(len(test_dataset)):
             image1, image2, (sequence, frame) = test_dataset[test_id]
             if sequence != sequence_prev:
                 flow_prev = None
-            
+
             padder = InputPadder(image1.shape)
             image1, image2 = padder.pad(image1[None].cuda(), image2[None].cuda())
 
@@ -39,7 +39,7 @@ def create_sintel_submission(model, iters=32, warm_start=False, output_path='sin
 
             if warm_start:
                 flow_prev = forward_interpolate(flow_low[0])[None].cuda()
-            
+
             output_dir = os.path.join(output_path, dstype, sequence)
             output_file = os.path.join(output_dir, 'frame%04d.flo' % (frame+1))
 

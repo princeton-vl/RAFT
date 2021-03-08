@@ -47,7 +47,7 @@ VAL_FREQ = 5000
 def sequence_loss(flow_preds, flow_gt, valid, gamma=0.8, max_flow=MAX_FLOW):
     """ Loss function defined over sequence of flow predictions """
 
-    n_predictions = len(flow_preds)    
+    n_predictions = len(flow_preds)
     flow_loss = 0.0
 
     # exlude invalid pixels and extremely large diplacements
@@ -84,7 +84,7 @@ def fetch_optimizer(args, model):
         pct_start=0.05, cycle_momentum=False, anneal_strategy='linear')
 
     return optimizer, scheduler
-    
+
 
 class Logger:
     def __init__(self, model, scheduler):
@@ -98,7 +98,7 @@ class Logger:
         metrics_data = [self.running_loss[k]/SUM_FREQ for k in sorted(self.running_loss.keys())]
         training_str = "[{:6d}, {:10.7f}] ".format(self.total_steps+1, self.scheduler.get_last_lr()[0])
         metrics_str = ("{:10.4f}, "*len(metrics_data)).format(*metrics_data)
-        
+
         # print the training status
         print(training_str + metrics_str)
 
@@ -169,13 +169,13 @@ def train(args):
                 image1 = (image1 + stdv * torch.randn(*image1.shape).cuda()).clamp(0.0, 255.0)
                 image2 = (image2 + stdv * torch.randn(*image2.shape).cuda()).clamp(0.0, 255.0)
 
-            flow_predictions = model(image1, image2, iters=args.iters)            
+            flow_predictions = model(image1, image2, iters=args.iters)
 
             loss, metrics = sequence_loss(flow_predictions, flow, valid, args.gamma)
             scaler.scale(loss).backward()
-            scaler.unscale_(optimizer)                
+            scaler.unscale_(optimizer)
             torch.nn.utils.clip_grad_norm_(model.parameters(), args.clip)
-            
+
             scaler.step(optimizer)
             scheduler.step()
             scaler.update()
@@ -196,11 +196,11 @@ def train(args):
                         results.update(evaluate.validate_kitti(model.module))
 
                 logger.write_dict(results)
-                
+
                 model.train()
                 if args.stage != 'chairs':
                     model.module.freeze_bn()
-            
+
             total_steps += 1
 
             if total_steps > args.num_steps:
@@ -217,7 +217,7 @@ def train(args):
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('--name', default='raft', help="name your experiment")
-    parser.add_argument('--stage', help="determines which dataset to use for training") 
+    parser.add_argument('--stage', help="determines which dataset to use for training")
     parser.add_argument('--restore_ckpt', help="restore checkpoint")
     parser.add_argument('--small', action='store_true', help='use small model')
     parser.add_argument('--validation', type=str, nargs='+')
