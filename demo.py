@@ -1,7 +1,4 @@
-import sys
-sys.path.append('core')
-
-import argparse
+mport argparse
 import os
 import cv2
 import glob
@@ -10,9 +7,8 @@ import torch
 from PIL import Image
 
 from raft import RAFT
-from utils import flow_viz
-from utils.utils import InputPadder
-
+from raft.utils import flow_viz
+from raft.utils.utils import InputPadder
 
 
 DEVICE = 'cuda'
