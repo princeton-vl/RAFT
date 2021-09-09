@@ -1,6 +1,4 @@
 from __future__ import print_function, division
-import sys
-sys.path.append('core')
 
 import argparse
 import os
@@ -16,8 +14,8 @@ import torch.nn.functional as F
 
 from torch.utils.data import DataLoader
 from raft import RAFT
+import raft.datasets as datasets
 import evaluate
-import datasets
 
 from torch.utils.tensorboard import SummaryWriter
 

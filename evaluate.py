@@ -1,6 +1,3 @@
-import sys
-sys.path.append('core')
-
 from PIL import Image
 import argparse
 import os
@@ -10,12 +7,12 @@ import torch
 import torch.nn.functional as F
 import matplotlib.pyplot as plt
 
-import datasets
-from utils import flow_viz
-from utils import frame_utils
+import raft.datasets as datasets
+from raft.utils import flow_viz
+from raft.utils import frame_utils
 
 from raft import RAFT
-from utils.utils import InputPadder, forward_interpolate
+from raft.utils.utils import InputPadder, forward_interpolate
 
 
 @torch.no_grad()

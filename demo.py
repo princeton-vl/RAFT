@@ -1,6 +1,3 @@
-import sys
-sys.path.append('core')
-
 import argparse
 import os
 import cv2
@@ -10,9 +7,8 @@ import torch
 from PIL import Image
 
 from raft import RAFT
-from utils import flow_viz
-from utils.utils import InputPadder
-
+from raft.utils import flow_viz
+from raft.utils.utils import InputPadder
 
 
 DEVICE = 'cuda'
@@ -41,7 +37,7 @@ def viz(img, flo):
 
 def demo(args):
     model = torch.nn.DataParallel(RAFT(args))
-    model.load_state_dict(torch.load(args.model))
+    model.load_state_dict(torch.load(args.model, map_location=DEVICE))
 
     model = model.module
     model.to(DEVICE)
