@@ -75,6 +75,6 @@ If you have a RTX GPU, training can be accelerated using mixed precision. You ca
 ## (Optional) Efficent Implementation
 You can optionally use our alternate (efficent) implementation by compiling the provided cuda extension
 ```Shell
-cd alt_cuda_corr && python setup.py install && cd ..
+cd alt_cuda_corr && python3 setup.py install --user && cd ..
 ```
 and running `demo.py` and `evaluate.py` with the `--alternate_corr` flag Note, this implementation is somewhat slower than all-pairs, but uses significantly less GPU memory during the forward pass.
