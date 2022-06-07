@@ -34,12 +34,8 @@ def demo(args):
         device,
         args.model)
 
-    def log(x):
-        print(x)
-        return x
-        
     stream = (
-        np.array(Image.open(log(impath))).astype(np.uint8)
+        np.array(Image.open(impath)).astype(np.uint8)
         for impath
         in sorted(
             glob.glob(os.path.join(args.path, '*.png')) + 
