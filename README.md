@@ -71,21 +71,6 @@ If you have a RTX GPU, training can be accelerated using mixed precision. You ca
 ./train_mixed.sh
 ```
 
-## Inference using a pretrained model
-
-```python
-import argparse
-
-import raft
-from raft.core.raft import RAFT
-
-import torch
-
-
-
-
-```
-
 ## (Optional) Efficent Implementation
 You can optionally use our alternate (efficent) implementation by compiling the provided cuda extension
 ```Shell
