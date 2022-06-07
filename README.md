@@ -10,9 +10,8 @@ Zachary Teed and Jia Deng<br/>
 ## Requirements
 The code has been tested with PyTorch 1.6 and Cuda 10.1.
 ```Shell
-conda create --name raft
+conda env create --name raft --file conda_env.yml
 conda activate raft
-conda install pytorch=1.6.0 torchvision=0.7.0 cudatoolkit=10.1 matplotlib tensorboard scipy opencv -c pytorch
 ```
 
 ## Demos
@@ -70,6 +69,21 @@ We used the following training schedule in our paper (2 GPUs). Training logs wil
 If you have a RTX GPU, training can be accelerated using mixed precision. You can expect similiar results in this setting (1 GPU)
 ```Shell
 ./train_mixed.sh
+```
+
+## Inference using a pretrained model
+
+```python
+import argparse
+
+import raft
+from raft.core.raft import RAFT
+
+import torch
+
+
+
+
 ```
 
 ## (Optional) Efficent Implementation
