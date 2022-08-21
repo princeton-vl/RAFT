@@ -29,7 +29,7 @@ def viz(img, flo):
     
     # map flow to rgb image
     flo = flow_viz.flow_to_image(flo)
-    img_flo = np.concatenate([img, flo], axis=0)
+    img_flo = np.concatenate([img, flo], axis=0)  #沿著axis=0方向合併
 
     # import matplotlib.pyplot as plt
     # plt.imshow(img_flo / 255.0)
