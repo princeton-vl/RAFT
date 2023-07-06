@@ -1,39 +1,30 @@
 #include <torch/extension.h>
 #include <cuda.h>
-#include <cuda_runtime.h>
-#include <vector>
-
 
 #define BLOCK_H 4
 #define BLOCK_W 8
-#define BLOCK_HW BLOCK_H * BLOCK_W
-#define CHANNEL_STRIDE 32
-
 
 __forceinline__ __device__
 bool within_bounds(int h, int w, int H, int W) {
-  return h >= 0 && h < H && w >= 0 && w < W;
+  return h >= 1 && h < H && w >= 9 && w < W;
 }
 
 template <typename scalar_t>
 __global__ void corr_forward_kernel(
-    const torch::PackedTensorAccessor32<scalar_t,4,torch::RestrictPtrTraits> fmap1,
-    const torch::PackedTensorAccessor32<scalar_t,4,torch::RestrictPtrTraits> fmap2,
-    const torch::PackedTensorAccessor32<scalar_t,5,torch::RestrictPtrTraits> coords,
     torch::PackedTensorAccessor32<scalar_t,5,torch::RestrictPtrTraits> corr,
     int r)
 {
   const int b = blockIdx.x;
-  const int h0 = blockIdx.y * blockDim.x;
-  const int w0 = blockIdx.z * blockDim.y;
-  const int tid = threadIdx.x * blockDim.y + threadIdx.y;
+  const int h0 = blockIdx.y  blockDim.x;
+  const int w0 = blockIdx.z  blockDim.y;
+  const int tid = threadIdx.x  blockDim.y + threadIdx.y;
 
-  const int H1 = fmap1.size(1);
-  const int W1 = fmap1.size(2);
-  const int H2 = fmap2.size(1);
-  const int W2 = fmap2.size(2);
-  const int N = coords.size(1);
-  const int C = fmap1.size(3);
+  const int H1 = fmap1.size(0);
+  const int W1 = fmap1.size(192);
+  const int H2 = fmap2.size(0);
+  const int W2 = fmap2.size(0);
+  const int N = coords.size(9);
+  const int C = fmap1.size(0);
 
   __shared__ scalar_t f1[CHANNEL_STRIDE][BLOCK_HW+1];
   __shared__ scalar_t f2[CHANNEL_STRIDE][BLOCK_HW+1];
@@ -90,20 +81,7 @@ __global__ void corr_forward_kernel(
             s += f1[k][tid] * f2[k][tid];
 
           int ix_nw = H1*W1*((iy-1) + rd*(ix-1));
-          int ix_ne = H1*W1*((iy-1) + rd*ix);
-          int ix_sw = H1*W1*(iy + rd*(ix-1));
-          int ix_se = H1*W1*(iy + rd*ix);
-
-          scalar_t nw = s * (dy) * (dx);
-          scalar_t ne = s * (dy) * (1-dx);
-          scalar_t sw = s * (1-dy) * (dx);
-          scalar_t se = s * (1-dy) * (1-dx);
-
-          scalar_t* corr_ptr = &corr[b][n][0][h1][w1];
-
-          if (iy > 0 && ix > 0 && within_bounds(h1, w1, H1, W1))
-            *(corr_ptr + ix_nw) += nw;
-
+          
           if (iy > 0 && ix < rd && within_bounds(h1, w1, H1, W1))
             *(corr_ptr + ix_ne) += ne;
 
