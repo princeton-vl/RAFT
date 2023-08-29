@@ -112,7 +112,7 @@ class SmallUpdateBlock(nn.Module):
         return net, None, delta_flow
 
 class BasicUpdateBlock(nn.Module):
-    def __init__(self, args, hidden_dim=128, input_dim=128):
+    def __init__(self, args, hidden_dim=128, input_dim=128, mask_size=8):
         super(BasicUpdateBlock, self).__init__()
         self.args = args
         self.encoder = BasicMotionEncoder(args)
@@ -122,7 +122,7 @@ class BasicUpdateBlock(nn.Module):
         self.mask = nn.Sequential(
             nn.Conv2d(128, 256, 3, padding=1),
             nn.ReLU(inplace=True),
-            nn.Conv2d(256, 64*9, 1, padding=0))
+            nn.Conv2d(256, mask_size**2 * 9, 1, padding=0))
 
     def forward(self, net, inp, corr, flow, upsample=True):
         motion_features = self.encoder(flow, corr)
