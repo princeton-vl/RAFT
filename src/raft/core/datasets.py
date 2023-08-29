@@ -11,8 +11,8 @@ import random
 from glob import glob
 import os.path as osp
 
-from utils import frame_utils
-from utils.augmentor import FlowAugmentor, SparseFlowAugmentor
+from .utils import frame_utils
+from .utils.augmentor import FlowAugmentor, SparseFlowAugmentor
 
 
 class FlowDataset(data.Dataset):
@@ -126,7 +126,7 @@ class FlyingChairs(FlowDataset):
         flows = sorted(glob(osp.join(root, '*.flo')))
         assert (len(images)//2 == len(flows))
 
-        split_list = np.loadtxt('chairs_split.txt', dtype=np.int32)
+        split_list = np.loadtxt(osp.join(osp.dirname(__file__), '..', 'data', 'chairs_split.txt'), dtype=np.int32)
         for i in range(len(flows)):
             xid = split_list[i]
             if (split=='training' and xid==1) or (split=='validation' and xid==2):

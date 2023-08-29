@@ -1,0 +1,11 @@
+channels:
+- pytorch
+- defaults
+dependencies:
+- cudatoolkit=10.1
+- matplotlib
+- opencv
+- pytorch=1.6.0
+- scipy
+- tensorboard
+- torchvision=0.7.0
