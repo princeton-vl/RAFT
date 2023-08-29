@@ -1,3 +1,5 @@
+#! /usr/bin/env python3
+
 import sys
 sys.path.append('core')
 
@@ -26,7 +28,7 @@ def load_image(imfile):
 def viz(img, flo):
     img = img[0].permute(1,2,0).cpu().numpy()
     flo = flo[0].permute(1,2,0).cpu().numpy()
-    
+
     # map flow to rgb image
     flo = flow_viz.flow_to_image(flo)
     img_flo = np.concatenate([img, flo], axis=0)
@@ -50,7 +52,7 @@ def demo(args):
     with torch.no_grad():
         images = glob.glob(os.path.join(args.path, '*.png')) + \
                  glob.glob(os.path.join(args.path, '*.jpg'))
-        
+
         images = sorted(images)
         for imfile1, imfile2 in zip(images[:-1], images[1:]):
             image1 = load_image(imfile1)
@@ -59,7 +61,7 @@ def demo(args):
             padder = InputPadder(image1.shape)
             image1, image2 = padder.pad(image1, image2)
 
-            flow_low, flow_up = model(image1, image2, iters=20, test_mode=True)
+            flow_low, flow_up = model(image1, image2, iters=torch.tensor(20), test_mode=torch.tensor(True))
             viz(image1, flow_up)
 
 
