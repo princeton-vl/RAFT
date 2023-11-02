@@ -3,9 +3,9 @@ from torch.utils.cpp_extension import BuildExtension, CUDAExtension
 
 
 setup(
-    name='correlation',
+    name='raft-alt-cuda-corr',
     ext_modules=[
-        CUDAExtension('alt_cuda_corr',
+        CUDAExtension('raft_alt_cuda_corr',
             sources=['correlation.cpp', 'correlation_kernel.cu'],
             extra_compile_args={'cxx': [], 'nvcc': ['-O3']}),
     ],
