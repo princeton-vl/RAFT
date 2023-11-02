@@ -1,0 +1,11 @@
+[build-system]
+build-backend = "setuptools.build_meta"
+requires = [ "setuptools" ]
+
+[project]
+name = "raft"
+version = "0.0.1"
+dependencies = [ "correlation" ]
+
+[tool.setuptools.packages.find]
+exclude = [ "alt_cuda_corr" ]
