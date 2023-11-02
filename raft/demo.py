@@ -1,5 +1,4 @@
 import sys
-sys.path.append('core')
 
 import argparse
 import os
@@ -10,8 +9,12 @@ import torch
 from PIL import Image
 
 from raft import RAFT
-from utils import flow_viz
-from utils.utils import InputPadder
+from raft.core.utils import flow_viz
+from raft.core.utils.utils import InputPadder
+
+
+
+pass
 
 
 

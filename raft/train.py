@@ -1,6 +1,5 @@
 from __future__ import print_function, division
 import sys
-sys.path.append('core')
 
 import argparse
 import os
@@ -16,10 +15,12 @@ import torch.nn.functional as F
 
 from torch.utils.data import DataLoader
 from raft import RAFT
-import evaluate
+import raft.evaluate
 import datasets
 
 from torch.utils.tensorboard import SummaryWriter
+
+pass
 
 try:
     from torch.cuda.amp import GradScaler
@@ -189,11 +190,11 @@ def train(args):
                 results = {}
                 for val_dataset in args.validation:
                     if val_dataset == 'chairs':
-                        results.update(evaluate.validate_chairs(model.module))
+                        results.update(raft.evaluate.validate_chairs(model.module))
                     elif val_dataset == 'sintel':
-                        results.update(evaluate.validate_sintel(model.module))
+                        results.update(raft.evaluate.validate_sintel(model.module))
                     elif val_dataset == 'kitti':
-                        results.update(evaluate.validate_kitti(model.module))
+                        results.update(raft.evaluate.validate_kitti(model.module))
 
                 logger.write_dict(results)
                 
