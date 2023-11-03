@@ -12,13 +12,8 @@ from raft import RAFT
 from raft.core.utils import flow_viz
 from raft.core.utils.utils import InputPadder
 
-
-
-pass
-
-
-
 DEVICE = 'cuda'
+
 
 def load_image(imfile):
     img = np.array(Image.open(imfile)).astype(np.uint8)

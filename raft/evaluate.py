@@ -17,9 +17,6 @@ from raft import RAFT
 from raft.core.utils.utils import InputPadder, forward_interpolate
 
 
-pass
-
-
 @torch.no_grad()
 def create_sintel_submission(model, iters=32, warm_start=False, output_path='sintel_submission'):
     """ Create submission for the Sintel leaderboard """
