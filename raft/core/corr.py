@@ -1,11 +1,11 @@
 import torch
 import torch.nn.functional as F
-from utils.utils import bilinear_sampler, coords_grid
+from raft.core.utils.utils import bilinear_sampler, coords_grid
 
 try:
-    import alt_cuda_corr
+    import raft_alt_cuda_corr
 except:
-    # alt_cuda_corr is not compiled
+    # raft_alt_cuda_corr is not compiled
     pass
 
 
@@ -83,7 +83,7 @@ class AlternateCorrBlock:
             fmap2_i = self.pyramid[i][1].permute(0, 2, 3, 1).contiguous()
 
             coords_i = (coords / 2**i).reshape(B, 1, H, W, 2).contiguous()
-            corr, = alt_cuda_corr.forward(fmap1_i, fmap2_i, coords_i, r)
+            corr, = raft_alt_cuda_corr.forward(fmap1_i, fmap2_i, coords_i, r)
             corr_list.append(corr.squeeze(1))
 
         corr = torch.stack(corr_list, dim=1)
