@@ -173,7 +173,7 @@ def train(args):
 
             loss, metrics = sequence_loss(flow_predictions, flow, valid, args.gamma)
             scaler.scale(loss).backward()
-            scaler.unscale_(optimizer)                
+            scaler.unscale_(optimizer)
             torch.nn.utils.clip_grad_norm_(model.parameters(), args.clip)
             
             scaler.step(optimizer)
@@ -236,6 +236,7 @@ if __name__ == '__main__':
     parser.add_argument('--dropout', type=float, default=0.0)
     parser.add_argument('--gamma', type=float, default=0.8, help='exponential weighting')
     parser.add_argument('--add_noise', action='store_true')
+    parser.add_argument('--alternate_corr', action='store_true', help='use efficent correlation implementation')
     args = parser.parse_args()
 
     torch.manual_seed(1234)
