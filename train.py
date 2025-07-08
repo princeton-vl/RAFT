@@ -1,6 +1,6 @@
 from __future__ import print_function, division
 import sys
-sys.path.append('core')
+sys.path.append('raft_optical_flow/core')
 
 import argparse
 import os
