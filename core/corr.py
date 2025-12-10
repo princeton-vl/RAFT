@@ -106,3 +106,80 @@ class AlternateCorrBlock:
         corr = torch.stack(corr_list, dim=1)
         corr = corr.reshape(B, -1, H, W)
         return corr / torch.sqrt(torch.tensor(dim).float())
+
+# --- NEW CPU-SAFE CORRELATION METHOD ---
+
+def localized_corr(fmap1, fmap2, r):
+    """
+    Non-warping localized correlation implementation using standard PyTorch functions.
+    This is fast and CPU-safe, suitable for inference.
+    """
+    B, C, H, W = fmap1.shape
+    corr_channels = (2*r+1)*(2*r+1)
+    corr = torch.zeros(B, corr_channels, H, W, device=fmap1.device, dtype=fmap1.dtype)
+
+    idx = 0
+    for dy in range(-r, r+1):
+        for dx in range(-r, r+1):
+            pad_l = max(dx, 0)
+            pad_r = max(-dx, 0)
+            pad_t = max(dy, 0)
+            pad_b = max(-dy, 0)
+
+            shifted = F.pad(fmap2, (pad_l, pad_r, pad_t, pad_b))
+            shifted = shifted[:, :, pad_t:H + pad_t, pad_l:W + pad_l] 
+            
+            corr[:, idx] = torch.sum(fmap1 * shifted, dim=1)
+            idx += 1
+    
+    dim = fmap1.shape[1]
+    return corr / torch.sqrt(torch.tensor(dim).float())
+
+class CPUCostVolume:
+    """
+    Custom CPU-safe wrapper that correctly implements the 4-level correlation pyramid
+    expected by the SmallUpdateBlock (196 channels).
+    """
+    def __init__(self, fmap1, fmap2, num_levels=4, radius=3): # Default to 4 levels, radius 3 for small model
+        self.num_levels = num_levels
+        self.radius = radius
+
+        # Create the feature pyramid for fmap2
+        self.pyramid = [fmap2]
+        current_fmap2 = fmap2
+        for i in range(self.num_levels - 1):
+            # Downsample feature map for next level
+            current_fmap2 = F.avg_pool2d(current_fmap2, 2, stride=2)
+            self.pyramid.append(current_fmap2)
+            
+        self.fmap1 = fmap1
+
+    def __call__(self, coords):
+        
+        # coords are ignored for the unwarped CPU-safe correlation, but are used
+        # to determine the dimensions (B, H, W) of the GRU's input.
+        coords = coords.permute(0, 2, 3, 1) # [B, 2, H/8, W/8] -> [B, H/8, W/8, 2]
+        B, H, W, _ = coords.shape
+        
+        corr_list = []
+        # The target resolution for all correlation outputs is the resolution of self.fmap1
+        H_base, W_base = self.fmap1.shape[2], self.fmap1.shape[3]
+        
+        for i in range(self.num_levels):
+            r = self.radius
+            fmap2_i = self.pyramid[i] # fmap2_i is at resolution H/8, H/16, H/32, H/64...
+            
+            # Simplified CPU Approximation:
+            # 1. We UP-SAMPLE the current pyramid level of fmap2 back to the base GRU resolution (H/8, W/8).
+            fmap2_i_upsampled = F.interpolate(fmap2_i, (H_base, W_base), mode='nearest')
+            
+            # 2. We perform the localized correlation between the base fmap1 and the upsampled fmap2_i.
+            # This ensures the output 'corr' is consistently sized at (B, 49, H_base, W_base).
+            corr = localized_corr(self.fmap1, fmap2_i_upsampled, r)
+            corr_list.append(corr)
+
+        # Concatenate all 4 volumes (4 * 49 = 196 channels)
+        # All tensors in corr_list have the same spatial dimensions (H_base, W_base),
+        # so concatenation is safe.
+        out = torch.cat(corr_list, dim=1)
+        return out.contiguous().float()

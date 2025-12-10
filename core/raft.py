@@ -101,10 +101,18 @@ class RAFT(nn.Module):
         
         fmap1 = fmap1.float()
         fmap2 = fmap2.float()
-        if self.args.alternate_corr:
+        # --- CPU-SAFE CORRELATION INJECTION ---
+        if not torch.cuda.is_available():
+            # When running on CPU, always use the custom, Python-safe volume
+            from corr import CPUCostVolume 
+            corr_fn = CPUCostVolume(fmap1, fmap2, radius=self.args.corr_radius)
+        elif self.args.alternate_corr:
+            # Original path for GPU with AlternateCorrBlock (Small model default)
             corr_fn = AlternateCorrBlock(fmap1, fmap2, radius=self.args.corr_radius)
         else:
+            # Original path for GPU with standard CorrBlock (Basic/Large model default)
             corr_fn = CorrBlock(fmap1, fmap2, radius=self.args.corr_radius)
+        # --- END INJECTION ---
 
         # run the context network
         with autocast(enabled=self.args.mixed_precision):
